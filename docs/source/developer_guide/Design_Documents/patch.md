@@ -112,7 +112,7 @@ TORCH_DEVICE_BACKEND_AUTOLOAD=0 pytest -q \
   tests/ut/model_executor/warmup/test_sampling_warmup_gate.py \
   tests/ut/ops/test_kda_state_copy_gate.py \
   tests/ut/models/test_triton_fallbacks.py \
-  tests/ut/attention/test_sfa_dcp.py \
+  tests/ut/attention/test_sfa_cp.py \
   tests/ut/attention/test_sfa_triton_gate.py
 ```
 
