@@ -658,7 +658,7 @@ def _native_dflash_inputs(inputs, block_stride=None):
 
 def test_dflash_input_preparation_keeps_physical_and_kernel_block_sizes_separate(monkeypatch):
     kernel = MagicMock()
-    monkeypatch.setattr(dflash_module, "prepare_dflash_inputs_triton", kernel)
+    monkeypatch.setattr("vllm_ascend.ops.triton.spec_decode.prepare_dflash_inputs.prepare_dflash_inputs_triton", kernel)
     inputs = [object() for _ in range(28)]
     inputs[17] = 16  # Kernel block size, distinct from physical KV blocks.
     inputs[-1] = True  # sample_from_anchor
@@ -672,7 +672,7 @@ def test_dflash_input_preparation_keeps_physical_and_kernel_block_sizes_separate
 def test_dflash_input_preparation_forwards_num_reqs_override(monkeypatch):
     """vLLM main (#58984) forwards the DP-synced request count positionally."""
     kernel = MagicMock()
-    monkeypatch.setattr(dflash_module, "prepare_dflash_inputs_triton", kernel)
+    monkeypatch.setattr("vllm_ascend.ops.triton.spec_decode.prepare_dflash_inputs.prepare_dflash_inputs_triton", kernel)
     inputs = [object() for _ in range(28)]
     inputs[-1] = True  # sample_from_anchor
 
@@ -685,7 +685,7 @@ def test_dflash_input_preparation_restores_kernel_block_size_on_main(monkeypatch
     """vLLM main forwards the physical block size, but the Ascend block table is
     kernel-block addressed, so the factory restores the kernel size per group."""
     kernel = MagicMock()
-    monkeypatch.setattr(dflash_module, "prepare_dflash_inputs_triton", kernel)
+    monkeypatch.setattr("vllm_ascend.ops.triton.spec_decode.prepare_dflash_inputs.prepare_dflash_inputs_triton", kernel)
     block_table = torch.zeros(2, 4, dtype=torch.int32)
     block_tables = SimpleNamespace(
         kernel_block_sizes=[128],
@@ -704,7 +704,7 @@ def test_dflash_input_preparation_restores_kernel_block_size_on_main(monkeypatch
 
 def test_dflash_input_preparation_rejects_unknown_block_table(monkeypatch):
     kernel = MagicMock()
-    monkeypatch.setattr(dflash_module, "prepare_dflash_inputs_triton", kernel)
+    monkeypatch.setattr("vllm_ascend.ops.triton.spec_decode.prepare_dflash_inputs.prepare_dflash_inputs_triton", kernel)
     block_tables = SimpleNamespace(
         kernel_block_sizes=[128],
         input_block_tables=[torch.zeros(2, 4, dtype=torch.int32)],
@@ -722,7 +722,7 @@ def test_dflash_input_preparation_rejects_unknown_block_table(monkeypatch):
 @pytest.mark.parametrize("native_block_stride", [384, 1536])
 def test_dflash_input_preparation_keeps_expanded_kernel_page_addressing(monkeypatch, native_block_stride):
     kernel = MagicMock()
-    monkeypatch.setattr(dflash_module, "prepare_dflash_inputs_triton", kernel)
+    monkeypatch.setattr("vllm_ascend.ops.triton.spec_decode.prepare_dflash_inputs.prepare_dflash_inputs_triton", kernel)
     block_table = torch.tensor([[6, 7, 8]], dtype=torch.int32)
     block_tables = SimpleNamespace(kernel_block_sizes=[128], input_block_tables=[block_table])
     inputs = [object() for _ in range(28)]

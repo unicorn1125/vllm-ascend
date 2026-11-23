@@ -151,7 +151,7 @@ def test_adaptive_draft_uses_its_own_request_count(monkeypatch, local_reqs, dp_r
     monkeypatch.setattr(dspark_module, "build_attn_metadata_wrapper", nullcontext)
     monkeypatch.setattr(dspark_module, "build_attn_metadata_factory", lambda *args, **kwargs: nullcontext())
     kernel = Mock()
-    monkeypatch.setattr(dflash_module, "prepare_dflash_inputs_triton", kernel)
+    monkeypatch.setattr("vllm_ascend.ops.triton.spec_decode.prepare_dflash_inputs.prepare_dflash_inputs_triton", kernel)
     upstream = dspark_module.dflash_speculator
     monkeypatch.setattr(upstream, "prepare_dflash_inputs", dflash_module.prepare_dflash_inputs_factory(32))
 
