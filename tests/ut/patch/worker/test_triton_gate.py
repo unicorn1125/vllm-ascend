@@ -189,3 +189,77 @@ import vllm_ascend
 assert vllm_ascend._triton_available is False
 """
     subprocess.run([sys.executable, "-c", program], cwd=REPO_ROOT, check=True, timeout=30)
+
+
+@pytest.mark.parametrize("triton_supported", [False, True])
+def test_triton_package_boundary_rejects_unsupported_implementation(triton_supported):
+    """A direct Triton-only model import must fail before model construction."""
+    source = REPO_ROOT / "vllm_ascend/ops/triton/__init__.py"
+
+    def capture_import(name, *args, **kwargs):
+        if name == "vllm_ascend.device.hardware_profile":
+            return SimpleNamespace(
+                HardwareCapability=SimpleNamespace(TRITON_KERNELS=object()),
+                get_current_hardware_profile=lambda: SimpleNamespace(supports=lambda _: triton_supported),
+            )
+        return builtins.__import__(name, *args, **kwargs)
+
+    namespace = {"__builtins__": {**vars(builtins), "__import__": capture_import}}
+    if triton_supported:
+        exec(compile(source.read_text(), str(source), "exec"), namespace)
+    else:
+        with pytest.raises(RuntimeError, match="Triton-Ascend implementations are unavailable"):
+            exec(compile(source.read_text(), str(source), "exec"), namespace)
+
+
+@pytest.mark.parametrize(
+    "architecture",
+    [
+        "Qwen4ExpForCausalLM",
+        "Step5ForCausalLM",
+        "Glm5NextForCausalLM",
+        "DeepseekV41ForCausalLM",
+        "MiniMaxM3SparseForCausalLM",
+    ],
+)
+def test_model_level_gate_rejects_triton_only_architecture(monkeypatch, architecture):
+    profile = SimpleNamespace(supports=lambda capability: False)
+    hardware = SimpleNamespace(
+        HardwareCapability=SimpleNamespace(TRITON_KERNELS=object()),
+        get_current_hardware_profile=lambda: profile,
+    )
+    source = REPO_ROOT / "vllm_ascend/device/triton_gate.py"
+
+    def capture_import(name, *args, **kwargs):
+        if name == "vllm_ascend.device.hardware_profile":
+            return hardware
+        return builtins.__import__(name, *args, **kwargs)
+
+    namespace = {"__builtins__": {**vars(builtins), "__import__": capture_import}}
+    exec(compile(source.read_text(), str(source), "exec"), namespace)
+    config = SimpleNamespace(hf_config=SimpleNamespace(architectures=[architecture]), hf_text_config=None)
+
+    with pytest.raises(ValueError, match="requires Triton-Ascend"):
+        namespace["validate_model_triton_compatibility"](config)
+
+
+@pytest.mark.parametrize("architecture", ["LlamaForCausalLM", "DeepseekV4ForCausalLM"])
+@pytest.mark.parametrize("triton_supported", [False, True])
+def test_model_level_gate_allows_native_or_supported_architecture(monkeypatch, architecture, triton_supported):
+    profile = SimpleNamespace(supports=lambda capability: triton_supported)
+    hardware = SimpleNamespace(
+        HardwareCapability=SimpleNamespace(TRITON_KERNELS=object()),
+        get_current_hardware_profile=lambda: profile,
+    )
+    source = REPO_ROOT / "vllm_ascend/device/triton_gate.py"
+
+    def capture_import(name, *args, **kwargs):
+        if name == "vllm_ascend.device.hardware_profile":
+            return hardware
+        return builtins.__import__(name, *args, **kwargs)
+
+    namespace = {"__builtins__": {**vars(builtins), "__import__": capture_import}}
+    exec(compile(source.read_text(), str(source), "exec"), namespace)
+    config = SimpleNamespace(hf_config=SimpleNamespace(architectures=[architecture]), hf_text_config=None)
+
+    namespace["validate_model_triton_compatibility"](config)

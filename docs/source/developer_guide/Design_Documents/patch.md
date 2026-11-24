@@ -86,11 +86,22 @@ worker patch registration, custom-op registration, and kernel warmup. The worker
 bundle imports `patch_ascend_ops` before `patch_triton` on supported hardware
 because the latter overrides the causal-convolution implementation.
 
+The `vllm_ascend.ops.triton` package also enforces the same boundary. This is a
+last-resort guard for a model module that imports a Triton-only implementation
+directly instead of selecting it lazily. On 310P, or when the Triton backend is
+unavailable, such a configuration fails with an actionable error before model
+construction. Native implementations should still use an explicit
+`supports_triton()` branch so supported fallback paths remain selectable.
+
 Select a native fallback when one exists. If a requested feature has no fallback,
 validate it before initializing the model runner or allocating device resources,
 and include a supported alternative in the error. For example, a KDA state-copy
 plan rejects hardware without Triton support before importing its compiled
 launchers. Select a model supported by 310P.
+The platform hook also validates registered model architectures before vLLM
+resolves their implementation module. Current Triton-only OOT model families
+fail there with the model name and a native-model/hardware alternative, so a
+310P process never reaches their module-level Triton imports.
 Environment switches may select optimizations only within the hardware's
 capabilities; they must not override an unsupported capability.
 

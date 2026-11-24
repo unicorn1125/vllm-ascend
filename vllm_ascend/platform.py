@@ -47,6 +47,7 @@ from vllm_ascend.device.hardware_profile import (
     QuantizationBackendFamily,
     get_current_hardware_profile,
 )
+from vllm_ascend.device.triton_gate import validate_model_triton_compatibility
 from vllm_ascend.mrv2_utils import apply_v2_model_runner_config_patch
 
 # isort: off
@@ -649,6 +650,11 @@ class NPUPlatform(Platform):
         if vllm_config.model_config is None:
             logger.warning("Model config is missing. Skipping Ascend-specific config updates.")
             return
+
+        # Validate before vLLM resolves the registered model implementation.
+        # Several OOT model modules import Triton kernels at module scope, so
+        # an operator-level fallback cannot prevent an unsupported 310P import.
+        validate_model_triton_compatibility(vllm_config.model_config)
 
         # vLLM #61392 folds `compress_ratios` into `layer_types`/`compress_rates`.
         # Restore the legacy field before any runner/model/cache component reads
